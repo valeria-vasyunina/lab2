@@ -1,0 +1,62 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#define MEM_THRESHOLD 50
+
+int main() { pid_t pid, sid; FILE *fp; struct stat file_stat; char buffer[512];
+
+pid = fork();
+
+if (pid < 0)
+{
+    exit(EXIT_FAILURE);
+}
+
+if (pid > 0)
+{
+    exit(EXIT_SUCCESS);
+}
+
+sid = setsid();
+if (sid < 0)
+{
+    exit(EXIT_FAILURE);
+}
+
+if ((chdir("/")) < 0)
+{
+    exit(EXIT_FAILURE);
+}
+
+close(STDIN_FILENO);
+close(STDOUT_FILENO);
+close(STDERR_FILENO);
+
+while (1)
+{
+    fp = popen("free | awk '{print $4/$2*100}'", "r"); 
+    if (fp == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+
+    fgets(buffer, sizeof(buffer), fp);
+    fclose(fp);
+    double percent_free = strtod(buffer, NULL);
+
+    if (percent_free < MEM_THRESHOLD)
+    {
+        fp = popen("echo 'Warning: Low Memory!' | mail -s 'Low Memory Alert' root", "r");
+        if (fp == NULL)
+        {
+            exit(EXIT_FAILURE);
+        }
+        fclose(fp);
+    }
+    sleep(5);
+}
+exit(EXIT_SUCCESS);
+}
